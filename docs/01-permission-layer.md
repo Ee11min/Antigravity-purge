@@ -266,3 +266,25 @@ Run the shell command 'echo PERSIST_TURBO_OK' and report its output.
 ## 8. `ANTIGRAVITY_PERM_GRANTS`
 
 exe 里存在这个环境变量名，暗示可以按会话注入权限授予。实测启动时带上它没有任何效果——权限值仍以 `config.json` 为准。这一条记录在此，供后续排查。
+
+---
+
+## 附：连不上后端（loadCodeAssist / oauth2 token 超时）
+
+```
+failed to get load code assist response: Post "https://daily-cloudcode-pa.googleapis.com/v1internal:loadCodeAssist":
+Post "https://oauth2.googleapis.com/token": dial tcp [2404:6800:4008:c15::5f]:443:
+connectex: A connection attempt failed because the connected party did not properly respond ...
+```
+
+这条报错跟权限层无关，但会让人误以为是配置改坏了（表现是模型列表空、界面「未选择模型」「无项目」）。
+
+`language_server.exe` 是 Go 二进制，Go 的 `ProxyFromEnvironment` 只看环境变量，**不看 Windows 系统代理注册表**。所以：
+
+| 组件 | 走不走系统代理 |
+|---|---|
+| Electron 前端（Chromium） | ✅ 读注册表，能走 |
+| `language_server.exe`（Go） | ❌ 只读 `HTTP_PROXY` / `HTTPS_PROXY` / `NO_PROXY` |
+
+FlClash 开了系统代理，前端正常，后端直连 → 解析到不通的 IPv6 → 超时。修法见
+[`../scripts/fix-proxy.ps1`](../scripts/fix-proxy.ps1)，README 第 3e 节有用法。

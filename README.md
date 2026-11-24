@@ -277,6 +277,7 @@ Antigravity-purge/
 │   ├── proxy.py                   # MITM 代理（改写请求 / 落盘明文）
 │   ├── tap.py                     # 纯抓包桩（一律 503）
 │   ├── seturl.py                  # SetCloudCodeURL 设置 / 复位
+│   ├── fix-proxy.ps1              # 给 Go 后端补代理环境变量（登录超时修法）
 │   ├── local_backend.py           # 本地模型后端（替代 Google，唯一真正有效的路径）
 │   ├── patch_exe.py               # 五区域等长二进制补丁（含 --restore）
 │   └── relaunch.ps1               # 带代理变量 + CDP 端口重启
@@ -349,6 +350,32 @@ python scripts\patch_exe.py --dry-run      # 先看偏移和长度，不写盘
 python scripts\patch_exe.py               # 真写（会先 taskkill 两个进程）
 python scripts\patch_exe.py --restore     # 从 .orig 还原
 ```
+
+### 3e. 连不上后端（登录超时 / loadCodeAssist 失败）
+
+症状：
+
+```
+failed to get load code assist response: Post "https://daily-cloudcode-pa.googleapis.com/v1internal:loadCodeAssist":
+Post "https://oauth2.googleapis.com/token": dial tcp [2404:6800:4008:c15::5f]:443:
+connectex: A connection attempt failed because the connected party did not properly respond ...
+```
+
+模型列表变空、界面显示「未选择模型」、提示「无项目」。
+
+**根因**：`language_server.exe` 是 Go 程序，Go 的 `ProxyFromEnvironment` **只读环境变量**，不看 Windows 系统代理注册表。FlClash / Clash 开了「系统代理」，Electron 前端走代理没问题，Go 后端却直连，于是解析到不通的 IPv6 地址上。
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\fix-proxy.ps1                       # 临时（当前会话）
+powershell -ExecutionPolicy Bypass -File scripts\fix-proxy.ps1 -Port 7890 -Persist   # 持久化
+```
+
+脚本会先 `Test-NetConnection` 验证端口，再设 `HTTP_PROXY` / `HTTPS_PROXY` / `ALL_PROXY` / `NO_PROXY`，最后带这些变量重启。
+
+两个细节：
+
+1. **`NO_PROXY` 必须包含 `127.0.0.1`**，否则脚本自己那套 CDP / `SetCloudCodeURL` 的连接会被代理吃掉。
+2. **`SetEnvironmentVariable(..., 'User')` 对已经在跑的进程无效**。已经开着的 PowerShell 进程环境块是旧的，`Start-Process` 继承的也是旧的 —— 必须在同一个会话里同时设 `$env:X` 和持久值，或者干脆重开终端。
 
 ### 三个必须知道的坑
 
