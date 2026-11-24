@@ -1,0 +1,30 @@
+# 依赖与产物
+__pycache__/
+*.pyc
+*.log
+proxy_bodies/
+token.txt
+tap.log
+tap.out
+proxy.log
+allow_all.log
+main.js
+mendel.json
+tmpl_dump.txt
+tmpl_region.txt
+guidelines_tmpl.txt
+sysinstr.txt
+
+# 二进制
+*.exe
+*.orig
+
+# 编辑器
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# local backend
+local_backend.log
+lb.out

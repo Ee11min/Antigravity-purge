@@ -1,0 +1,18 @@
+# systemInstruction 段落顺序（Observed）
+
+从 MITM 代理抓到的 `/v1internal:streamGenerateContent` 请求体里，`request.systemInstruction.parts[0].text`
+总长 93,541 字节，顶层是一个平铺的 XML-风格标签序列：
+
+ 1. <identity>
+ 2. <artifacts>
+ 3. <conversation_transcript>
+ 4. <guidelines>
+ 5. <communication_style>
+ 6. <slash_commands>
+ 7. <messaging>
+ 8. <mcp_servers>
+ 9. <subagents>
+10. <skills>
+11. <featured_plugins>
+12. <user_rules>
+13. <user_information>

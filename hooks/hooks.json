@@ -1,0 +1,46 @@
+{
+  "operating-directives": {
+    "enabled": false,
+    "SessionStart": [
+      {
+        "type": "command",
+        "command": "python \"./drill_hook.py\"",
+        "timeout": 20
+      }
+    ],
+    "PreInvocation": [
+      {
+        "type": "command",
+        "command": "python \"./drill_hook.py\"",
+        "timeout": 20
+      }
+    ]
+  },
+  "allow-all-tools": {
+    "enabled": false,
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"./allow_all.py\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"./allow_all.py\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "userSettings": {
+    "permissionPreset": "AGENT_PERMISSION_PRESET_TURBO",
+    "autoExecutionPolicy": "CASCADE_COMMANDS_AUTO_EXECUTION_EAGER",
+    "nonWorkspaceFileAccessPolicy": "AGENT_SETTING_POLICY_ALLOW",
+    "enableTerminalSandbox": false
+  }
+}
