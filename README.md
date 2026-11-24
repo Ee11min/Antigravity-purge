@@ -249,6 +249,11 @@ python scripts\seturl.py --reset
 
 它把 Gemini wire 请求的 `contents[].parts[].text` 摊平成 OpenAI 的 `messages`，再把回复包成 `data: {"response":{...}}` 的 SSE 帧。`run_command` 之类的工具调用用 `functionCall` part 回填，壳子照常执行。
 
+**这条路已经端到端跑通**：`--dry` 模式下界面显示的模型回复就是后端返回的 `LOCAL_BACKEND_OK`，后端日志确认收到 124 KB 的完整请求体。
+
+一个必踩的坑：**非生成类端点不能回 `{}`**。`fetchAvailableModels`（158 KB）、`loadCodeAssist`（3.9 KB）空了，壳子会报
+`Agent execution terminated due to error` —— 不是「模型列表为空」这种温和的失败，而是整条会话链断掉。所以 `local_backend.py` 默认把这些请求原样转发给真后端（`--real` 可改，传 `""` 关掉），只接管 `streamGenerateContent`。细节见 [`docs/04-mitm-proxy.md`](docs/04-mitm-proxy.md) 第 5 节。
+
 ---
 
 ## 五、仓库结构

@@ -350,3 +350,74 @@ def sse(text):
 - 用完复位 `{"url": ""}`。
 
 仓库的 `.gitignore` 已经排除这些路径。
+
+---
+
+## 5. 实测：把壳子交给本地后端
+
+`scripts/local_backend.py` 是这条路的可跑骨架。实测过程与坑：
+
+### 5.1 非生成类端点必须透传
+
+第一次把 `SetCloudCodeURL` 指向本地后端时，`StreamGenerateContent` 之外的所有端点都被回成了 `{}`：
+
+```
+POST /v1internal:loadCodeAssist           len=38
+POST /v1internal:fetchUserInfo            len=2
+POST /v1internal:retrieveUserQuotaSummary len=2
+POST /v1internal:fetchAvailableModels     len=2
+```
+
+后果不是「模型列表为空」，而是整条会话链断掉：
+
+```
+错误
+Unknown: Agent execution terminated due to error.
+Error ID: 4021df37-9c3b-4f54-a033-8b555afced25-80
+```
+
+`fetchAvailableModels` 正常返回 **158,236 字节**，`loadCodeAssist` 返回 **3,902 字节**。这两个空了，壳子就没法构造 `model_enum` / project 上下文，请求发不出去。
+
+修法：`local_backend.py` 默认把非 `streamGenerateContent` 的请求原样转发到
+`https://daily-cloudcode-pa.googleapis.com`（`UPSTREAM_API`，可用 `--real` 覆盖，传 `""` 关掉）。修完后日志变成：
+
+```
+POST /v1internal:loadCodeAssist len=38
+  -> passthrough 200 len=3902
+POST /v1internal:fetchAvailableModels len=30
+  -> passthrough 200 len=158236
+```
+
+注意 `retrieveUserQuotaSummary` 可能返回 **429**（额度查询限频），也是直接透传，不影响生成。
+
+### 5.2 端到端结果
+
+```powershell
+python scripts\local_backend.py --dry
+python scripts\seturl.py http://127.0.0.1:9100
+```
+
+发「Say hello and nothing else.」，界面上模型回复：
+
+```
+LOCAL_BACKEND_OK
+```
+
+后端日志：
+
+```
+21:07:08 POST /v1internal:streamGenerateContent len=123973
+21:07:08   messages=2 last_user='<USER_REQUEST>\nSay hello and nothing else.\n</USER_REQUEST>...'
+```
+
+**这条链路已经完全通了**：壳子渲染、消息历史、工具调用全走正常路径，只有「谁来生成」被换掉了。
+
+### 5.3 请求体规模参考
+
+| 字段 | 量级 |
+|---|---|
+| 整个 `streamGenerateContent` 请求体 | 124 KB（含 33 轮历史时可达更大） |
+| `systemInstruction.parts[0].text` | 93,541 字节 |
+| `recordTrajectoryAnalytics` | 400 KB |
+
+`flatten()` 会把 93 KB 的 systemInstruction 原样塞进 OpenAI 的 system 消息 —— 接本地模型时注意上下文窗口。
